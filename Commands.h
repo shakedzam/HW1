@@ -18,12 +18,21 @@ enum ArgumentsStatus
     ARGUMENT_INVALID
 };
 
+enum SpecialCommand {
+    NORMAL = 0,
+    PIPE,
+    PIPE_TO_ERR,
+    REDIRECTION,
+    REDIRECTION_APPEND
+};
+
 class Command {
 private:
 
 
 protected:
     const char* my_cmd_line;
+    const char* origin_cmd_line;
     char* args[COMMAND_MAX_ARGS];
     int args_len;
     bool is_bg;
@@ -34,7 +43,9 @@ protected:
   virtual void execute() = 0;
   pid_t getPID(){return command_pid;}
   void setPID(pid_t new_pid){command_pid=new_pid;}
-  const char* getCommand(){return my_cmd_line;}
+  string getCommand(){
+      string ret(origin_cmd_line);
+      return ret;}
   bool isBgCommand(){return is_bg;}
   void setBgCommand(bool is_bg_command){is_bg=is_bg_command;}
   //virtual void prepare();
@@ -214,6 +225,12 @@ class ExternalCommand : public Command {
 class PipeCommand : public Command {
   // TODO: Add your data members
  public:
+    SpecialCommand op;
+    std::string cmd1_s;
+    std::string cmd2_s;
+    int temp_stdout_fd;
+    int temp_stderr_fd;
+    int temp_stdin_fd;
   PipeCommand(const char* cmd_line);
   virtual ~PipeCommand() {}
   void execute() override;
@@ -222,6 +239,9 @@ class PipeCommand : public Command {
 class RedirectionCommand : public Command {
  // TODO: Add your data members
  public:
+    bool append;
+    std::string leftSide;
+    std::string rightSide;
   explicit RedirectionCommand(const char* cmd_line);
   virtual ~RedirectionCommand() {}
   void execute() override;
