@@ -1,0 +1,2 @@
+/home/student/Documents/HW1.1/cmake-build-debug
+/home/student/Documents/HW1.1/cmake-build-debug
