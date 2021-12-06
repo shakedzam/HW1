@@ -16,8 +16,6 @@ using namespace std;
 #define FG_CMD_MAX_ARG_NUM 2
 #define FG_CMD_MIN_ARG_NUM 1
 #define NO_JOB_IN_LIST -1
-#define FORK_FAILED -1
-#define FORK_CHILD 0
 #if 0
 #define FUNC_ENTRY()  \
   cout << __PRETTY_FUNCTION__ << " --> " << endl;
@@ -238,49 +236,26 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
     {
         return std::shared_ptr<Command>(new QuitCommand(cmd_line,&jobs));
     }
-    //end of if command is an internal command
+        //end of if command is an internal command
+        /*
 
-    //else its external command
-    else {
-        return std::shared_ptr<Command>(new ExternalCommand(cmd_line));
+        else {
+          return new ExternalCommand(cmd_line);
+        }
+
+        */
+    else
+    {
+        return nullptr;
     }
+
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     // for example:
     std::shared_ptr<Command> cmd = SmallShell::CreateCommand(cmd_line);
-	if(typeid(*cmd)==typeid(RedirectionCommand))
-    {
-        cmd->execute();
-    }
-	
-    if(typeid(*cmd)==typeid(ExternalCommand))
-    {
-        pid_t external_process_id=fork();
-        if(FORK_FAILED==external_process_id)
-        {
-            perror("smash error: fork failed");
-        }
-        else if(FORK_CHILD==external_process_id)
-        {
-            setpgrp();
-            cmd->execute();
-        }
-        else //parent process
-        {
-            cmd->setPID(external_process_id);
-            if(not cmd->isBgCommand()) //foreground commmand
-            {
-                jobs.setFgJob(cmd);
-                waitpid(jobs.getFgJob()->getJobPid(),nullptr, WUNTRACED);
-            }
-            else {
-                jobs.addJob(cmd);
-            }
-        }
-    }
-    else if(typeid(*cmd)==typeid(ChPromptCommand))
+    if(typeid(*cmd)==typeid(ChPromptCommand))
         //if(typeid(*cmd)==typeid(BuiltInCommand))
     {
         cmd->execute();
@@ -348,28 +323,6 @@ BuiltInCommand::BuiltInCommand(const char* cmd_line):Command(cmd_line){
 
 
 
-
-
-
-//--------------------------------------External Command member functions-----------------------------------------------
-
-ExternalCommand::ExternalCommand(const char* cmd_line): Command(cmd_line), bash_cmd(my_cmd_line){
-    _removeBackgroundSign(bash_cmd);
-}
-
-
-void ExternalCommand::execute() {
-    execl("/bin/bash", "/bin/bash", "-c", bash_cmd.c_str(), NULL);
-}
-//--------------------------------------end of External Command member functions----------------------------------------
-
-
-
-
-
-
-
-
 //--------------------------------------ChPrompt Command member functions-----------------------------------------------
 void ChPromptCommand::execute() {
     SmallShell& smash=SmallShell::getInstance();
@@ -396,8 +349,20 @@ void ShowPidCommand::execute() {
 
 //--------------------------------------GetCurrDir Command member functions---------------------------------------------
 void GetCurrDirCommand::execute() {
-    char buff[PATH_MAX];
-    cout << getcwd(buff, PATH_MAX) << endl;
+    //SmallShell& smash=SmallShell::getInstance();
+    long max_buff_size = pathconf(".", _PC_PATH_MAX);
+    char* buff;
+    char* current_dir;
+    if ((buff = (char*)malloc((size_t)max_buff_size)) != NULL) {
+        current_dir = getcwd(buff, (size_t) max_buff_size);
+        if (!current_dir) {
+            std::cerr << "smash error: getcwd failed" << std::endl;
+            free(buff);
+            return;
+        }
+        std::cout << current_dir << std::endl;
+        free(buff);
+    }
 }
 //--------------------------------------end of GetCurrDir Command member functions--------------------------------------
 
@@ -422,7 +387,6 @@ void ChangeDirCommand::execute() {
             if((*last_directory).empty())
             {
                 cerr << "smash error: cd: OLDPWD not set" << endl;
-                return;
             }
             else
             {
@@ -797,7 +761,7 @@ void RedirectionCommand::execute() {
 }
 
 PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {
-    string temp(cmd_line);
+    string temp(this->cmd_line);
     size_t op_pos;
     if(op == PIPE) {
         op_pos = temp.find("|");
@@ -858,7 +822,7 @@ void PipeCommand::execute() {
         DO_CLOSE(close(fd[PIPE_READ]));
         DO_CLOSE(close(fd[PIPE_WRITE]));
         smash.executeCommand(cmd1_s.c_str());
-        //smash.external_quit_flag = true;
+        smash.external_quit_flag = true;
     }
     else {
         //father code
@@ -878,7 +842,7 @@ void PipeCommand::execute() {
             DO_CLOSE(close(fd[PIPE_READ]));
             DO_CLOSE(close(fd[PIPE_WRITE]));
             smash.executeCommand(cmd2_s.c_str());
-            //smash.external_quit_flag = true;
+            smash.external_quit_flag = true;
         }
         else {
             DO_CLOSE(close(fd[PIPE_READ]));
