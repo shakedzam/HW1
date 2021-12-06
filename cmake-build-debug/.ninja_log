@@ -1,0 +1,12 @@
+# ninja log v5
+4	2745	1638792730830717275	CMakeFiles/untitled.dir/Commands.cpp.o	d21ac8dc8c9cca1e
+15	2282	1638792730366725918	CMakeFiles/untitled.dir/signals.cpp.o	7d1754e9d0dcbbe4
+3	2287	1638792730370725844	CMakeFiles/untitled.dir/smash.cpp.o	d7475e6e8677eac6
+2746	2980	1638792731066713132	untitled	b7e5d458c0a3542e
+2	3827	1638796910668085787	CMakeFiles/untitled.dir/signals.cpp.o	7d1754e9d0dcbbe4
+1	3831	1638796910672085691	CMakeFiles/untitled.dir/smash.cpp.o	d7475e6e8677eac6
+1	5136	1638796911976054621	CMakeFiles/untitled.dir/Commands.cpp.o	d21ac8dc8c9cca1e
+19	3029	1638796953951154238	CMakeFiles/untitled.dir/signals.cpp.o	7d1754e9d0dcbbe4
+2	3037	1638796953959154084	CMakeFiles/untitled.dir/smash.cpp.o	d7475e6e8677eac6
+9	3810	1638796954731139286	CMakeFiles/untitled.dir/Commands.cpp.o	d21ac8dc8c9cca1e
+3811	3933	1638796954855136910	untitled	b7e5d458c0a3542e
