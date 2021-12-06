@@ -7,6 +7,8 @@
 #include <iomanip>
 #include "Commands.h"
 #include <climits>
+#include <fstream>
+#include <fcntl.h>
 
 using namespace std;
 #define WHITESPACE " "
@@ -24,6 +26,18 @@ using namespace std;
 #define FUNC_ENTRY()
 #define FUNC_EXIT()
 #endif
+
+
+#define STDERR_FD 2
+#define STDOUT_FD 1
+#define STDIN_FD 0
+#define PIPE_READ 0
+#define PIPE_WRITE 1
+#define DO_CLOSE( syscall ) do { \
+    if((syscall) == -1 ) { \
+    perror( "smash: close failed" ); \
+    } \
+    } while( 0 )                 \
 //--------------------------------------non member functions------------------------------------------------------------
 string _ltrim(const std::string& s)
 {
@@ -96,6 +110,45 @@ bool isNumber(const std::string& s)
 
 
 
+//--------------------------------------smash member functions---------------------------------------------------
+
+SpecialCommand _identifyAndSeperateSpecialSigns(const char* cmd_line, std::string& result) {
+    std::string cmd_line_s(cmd_line);
+    size_t sign_pos;
+    // search for ">>"
+    sign_pos = cmd_line_s.find(">>");
+    if(sign_pos != string::npos) {
+        result = cmd_line_s.substr(0, sign_pos) + " >> ";
+        result += cmd_line_s.substr(sign_pos + 2);
+        return REDIRECTION_APPEND;
+    }
+    // search for ">"
+    sign_pos = cmd_line_s.find(">");
+    if(sign_pos != string::npos) {
+        result = cmd_line_s.substr(0, sign_pos) + " > ";
+        result += cmd_line_s.substr(sign_pos + 1);
+        return REDIRECTION;
+    }
+    // search for "|&"
+    sign_pos = cmd_line_s.find("|&");
+    if(sign_pos != string::npos) {
+        result = cmd_line_s.substr(0, sign_pos) + " |& ";
+        result += cmd_line_s.substr(sign_pos + 2);
+        return PIPE_TO_ERR;
+    }
+    // search for "|"
+    sign_pos = cmd_line_s.find("|");
+    if(sign_pos != string::npos) {
+        result = cmd_line_s.substr(0, sign_pos) + " | ";
+        result += cmd_line_s.substr(sign_pos + 1);
+        return PIPE;
+    }
+    // no special signs
+    result = cmd_line_s;
+    return NORMAL;
+}
+
+
 //--------------------------------------small shell member functions----------------------------------------------------
 SmallShell::SmallShell():smash_name("smash") , smash_pid(getpid()){};
 
@@ -117,6 +170,25 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
 
+    //pipe or redirection
+    string special_cmd;
+    switch (_identifyAndSeperateSpecialSigns(cmd_s.c_str(),special_cmd)) {
+        case PIPE:
+            return std::shared_ptr<Command>(new PipeCommand(cmd_line));
+            break;
+        case PIPE_TO_ERR:
+            return std::shared_ptr<Command>(new PipeCommand(cmd_line));
+            break;
+        case REDIRECTION:
+            return std::shared_ptr<Command>(new RedirectionCommand(cmd_line));
+            break;
+        case REDIRECTION_APPEND:
+            return std::shared_ptr<Command>(new RedirectionCommand(special_cmd.c_str()));
+            break;
+        default:
+            break;
+
+    }
 
     //if command is an internal command
     //#1
@@ -233,7 +305,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
 
 
 //--------------------------------------Command member functions--------------------------------------------------------
-Command::Command(const char *cmd_line): my_cmd_line(cmd_line), command_pid(0){
+Command::Command(const char *cmd_line): my_cmd_line(_trim(cmd_line).c_str()), origin_cmd_line(cmd_line), command_pid(0){
     is_bg=_isBackgroundComamnd(cmd_line);
     args_len=_parseCommandLine(cmd_line , args);
 }
@@ -248,8 +320,6 @@ BuiltInCommand::BuiltInCommand(const char* cmd_line):Command(cmd_line){
     args_len=_parseCommandLine(temp.c_str() , args);
 }
 //--------------------------------------end of Built in Command member functions----------------------------------------
-
-
 
 
 
@@ -621,3 +691,164 @@ void QuitCommand::execute() {
     kill(smash.getSmashPID(), SIGKILL);
 }
 //--------------------------------------end of Quit Command member functions--------------------------------------------
+
+/*
+void ExternalCommand::execute() {
+    //bool is_back_ground_command = _isBackgroundComamnd(cmd_line);
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("smash error: fork failed");
+        return;
+    }
+
+
+
+}
+*/
+
+RedirectionCommand::RedirectionCommand(const char *cmd_line): Command(cmd_line) {
+
+    std::string str(cmd_line);
+    unsigned int idx = str.find_first_of('>');
+    append = cmd_line[idx + 1] == '>';
+    leftSide = str.substr(0, idx);
+    unsigned int end_inx;
+    if (append) {
+        end_inx = idx + 2;
+    } else {
+        end_inx = idx + 1;
+    }
+    rightSide = _trim(str.substr(end_inx));
+}
+
+void RedirectionCommand::execute() {
+    int flags = O_WRONLY | O_CREAT;
+    if (!append)
+    {flags |= O_TRUNC;}
+    else
+    {flags |= O_APPEND;}
+
+    mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO;
+    int fd = open(rightSide.c_str(), flags, mode);
+    if (fd == -1) {
+        perror("smash error: open failed");
+        return;
+    }
+    int backupStdout = dup(1);
+    if (backupStdout == -1) {
+        perror("smash error: dup failed");
+        if (close(fd) == -1)
+            perror("smash error: close failed");
+        return;
+    }
+    if (dup2(fd, 1) == -1) {
+        perror("smash error: dup2 failed");
+        if (close(fd) == -1)
+            perror("smash error: close failed");
+        return;
+    }
+
+    SmallShell& smash = SmallShell::getInstance();
+    smash.executeCommand(leftSide.c_str());
+
+    if (dup2(backupStdout, 1) == -1)
+        perror("smash error: dup2 failed");
+    if (close(backupStdout) == -1)
+        perror("smash error: close failed");
+    if (close(fd) == -1)
+        perror("smash error: close failed");
+}
+
+PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {
+    string temp(this->cmd_line);
+    size_t op_pos;
+    if(op == PIPE) {
+        op_pos = temp.find("|");
+        if(temp.find_last_not_of(WHITESPACE) == op_pos) {
+            // no file name given // TODO do something!!
+        }
+        else {
+            // skip | and space
+            cmd2_s = temp.substr(op_pos + 2);
+        }
+        cmd1_s = temp.substr(0, op_pos);
+    }
+        // PIPE_TO_ERR
+    else {
+        op_pos = temp.find("|&");
+        if(temp.find_last_not_of(WHITESPACE) == op_pos + 1) {
+            // no file name given // TODO do something!!
+        }
+        else {
+            // skip |& and space
+            cmd2_s = temp.substr(op_pos + 3);
+        }
+        cmd1_s = temp.substr(0, op_pos);
+    }
+}
+
+void PipeCommand::execute() {
+    SmallShell& smash = SmallShell::getInstance();
+
+    int fd [2];
+    if (pipe(fd) == -1){
+        perror("smash error: pipe failed");
+        return;
+    }
+
+    pid_t p1 = fork();
+    if (p1 == -1) {
+        // fork failed
+        perror("smash error: fork failed");
+        return;
+    }
+    else if (p1 == 0){
+        //  son 1 code
+        setpgrp();
+        if(op == PIPE) {
+            if(dup2(fd[PIPE_WRITE],STDOUT_FD) == -1) {
+                perror("smash error: dup2 failed");
+                return;
+            }
+        }
+        else {
+            // op == PIPE_ERR
+            if(dup2(fd[PIPE_WRITE],STDERR_FD) == -1) {
+                perror("smash error: dup2 failed");
+                return;
+            }
+        }
+        DO_CLOSE(close(fd[PIPE_READ]));
+        DO_CLOSE(close(fd[PIPE_WRITE]));
+        smash.executeCommand(cmd1_s.c_str());
+        smash.external_quit_flag = true;
+    }
+    else {
+        //father code
+        pid_t p2 = fork();
+        if (p2 == -1) {
+            // fork failed
+            perror("smash error: fork failed");
+            return;
+        }
+        else if (p2 == 0) {
+            //  son 2 code
+            setpgrp();
+            if( dup2(fd[PIPE_READ],STDIN_FD) == -1) {
+                perror("smash error: dup2 failed");
+                return;
+            }
+            DO_CLOSE(close(fd[PIPE_READ]));
+            DO_CLOSE(close(fd[PIPE_WRITE]));
+            smash.executeCommand(cmd2_s.c_str());
+            smash.external_quit_flag = true;
+        }
+        else {
+            DO_CLOSE(close(fd[PIPE_READ]));
+            DO_CLOSE(close(fd[PIPE_WRITE]));
+            waitpid(p1,nullptr, WUNTRACED);
+            waitpid(p2,nullptr, WUNTRACED);
+        }
+    }
+}
