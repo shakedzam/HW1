@@ -268,7 +268,11 @@ void SmallShell::executeCommand(const char *cmd_line) {
     {
         cmd->execute();
     }
-    else if(typeid(*cmd)==typeid(ChangeDirCommand))
+    else if(typeid(*cmd)==typeid(GetCurrDirCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(RedirectionCommand))
     {
         cmd->execute();
     }
@@ -761,7 +765,7 @@ void RedirectionCommand::execute() {
 }
 
 PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {
-    string temp(this->cmd_line);
+    string temp(cmd_line);
     size_t op_pos;
     if(op == PIPE) {
         op_pos = temp.find("|");
@@ -822,7 +826,7 @@ void PipeCommand::execute() {
         DO_CLOSE(close(fd[PIPE_READ]));
         DO_CLOSE(close(fd[PIPE_WRITE]));
         smash.executeCommand(cmd1_s.c_str());
-        smash.external_quit_flag = true;
+        //smash.external_quit_flag = true;
     }
     else {
         //father code
@@ -842,7 +846,7 @@ void PipeCommand::execute() {
             DO_CLOSE(close(fd[PIPE_READ]));
             DO_CLOSE(close(fd[PIPE_WRITE]));
             smash.executeCommand(cmd2_s.c_str());
-            smash.external_quit_flag = true;
+            //smash.external_quit_flag = true;
         }
         else {
             DO_CLOSE(close(fd[PIPE_READ]));
