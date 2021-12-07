@@ -234,7 +234,7 @@ class PipeCommand : public Command {
     int temp_stdout_fd;
     int temp_stderr_fd;
     int temp_stdin_fd;
-  PipeCommand(const char* cmd_line);
+  PipeCommand(const char* cmd_line,SpecialCommand op);
   virtual ~PipeCommand() {}
   void execute() override;
 };

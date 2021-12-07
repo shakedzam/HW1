@@ -180,10 +180,10 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
     string special_cmd;
     switch (_identifyAndSeperateSpecialSigns(cmd_s.c_str(),special_cmd)) {
         case PIPE:
-            return std::shared_ptr<Command>(new PipeCommand(cmd_line));
+            return std::shared_ptr<Command>(new PipeCommand(cmd_line,PIPE));
             break;
         case PIPE_TO_ERR:
-            return std::shared_ptr<Command>(new PipeCommand(cmd_line));
+            return std::shared_ptr<Command>(new PipeCommand(cmd_line,PIPE_TO_ERR));
             break;
         case REDIRECTION:
             return std::shared_ptr<Command>(new RedirectionCommand(cmd_line));
@@ -842,20 +842,7 @@ void QuitCommand::execute() {
 }
 //--------------------------------------end of Quit Command member functions--------------------------------------------
 
-/*
-void ExternalCommand::execute() {
-    //bool is_back_ground_command = _isBackgroundComamnd(cmd_line);
 
-    pid_t pid = fork();
-    if (pid == -1) {
-        perror("smash error: fork failed");
-        return;
-    }
-
-
-
-}
-*/
 
 RedirectionCommand::RedirectionCommand(const char *cmd_line): Command(cmd_line) {
 
@@ -910,7 +897,7 @@ void RedirectionCommand::execute() {
         perror("smash error: close failed");
 }
 
-PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {
+PipeCommand::PipeCommand(const char *cmd_line,SpecialCommand op): Command(cmd_line) , op(op) {
     string temp(cmd_line);
     size_t op_pos;
     if(op == PIPE) {
