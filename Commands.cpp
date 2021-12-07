@@ -1,4 +1,3 @@
-liran_changed
 #include <unistd.h>
 #include <string.h>
 #include <iostream>
@@ -597,6 +596,31 @@ std::shared_ptr<JobsList::JobEntry> JobsList::getLastStoppedJob()
         }
     }
     return nullptr;
+}
+
+void JobsList::StopFG() {
+    if(fg_job) {
+        fg_job->setIsStopped(true);
+        fg_job->resetTime();
+
+        if(fg_job->getJobId() == 0) {
+            addJob(fg_job->getCommand(),true);
+        }
+        else
+        {
+            for(int index =0; index<jobs.size();index++)
+            {
+                if(fg_job->getJobId()<jobs[index]->getJobId())
+                {
+                    jobs.insert(jobs.begin()+index,fg_job);
+                    break;
+                }
+            }
+        }
+
+        fg_job = nullptr;
+    }
+
 }
 //--------------------------------------end of JobsList Command member functions----------------------------------------
 

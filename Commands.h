@@ -5,6 +5,7 @@
 #include <string>
 #include <memory>
 #include <time.h>
+#include <unistd.h>
 
 
 
@@ -141,6 +142,7 @@ public:
     std::shared_ptr<JobEntry> getLastStoppedJob();
     void moveBGToFG(int job_id);
     // TODO: Add extra methods or modify exisitng ones as needed
+    void StopFG();
 };
 
 
