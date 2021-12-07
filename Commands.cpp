@@ -20,6 +20,8 @@ using namespace std;
 #define NO_JOB_IN_LIST -1
 #define FORK_FAILED -1
 #define FORK_CHILD 0
+
+
 #if 0
 #define FUNC_ENTRY()  \
   cout << __PRETTY_FUNCTION__ << " --> " << endl;
@@ -257,6 +259,11 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // for example:
     std::shared_ptr<Command> cmd = SmallShell::CreateCommand(cmd_line);
 	if(typeid(*cmd)==typeid(RedirectionCommand))
+    {
+        cmd->execute();
+    }
+
+    if(typeid(*cmd)==typeid(PipeCommand))
     {
         cmd->execute();
     }
@@ -932,6 +939,72 @@ PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {
 }
 
 void PipeCommand::execute() {
+
+    do{
+        SmallShell& smash = SmallShell::getInstance();
+
+        int fd [2];
+        if (pipe(fd) == -1){
+            perror("smash error: pipe failed");
+            return;
+        }
+
+        pid_t p1 = fork();
+        if (p1 == -1) {
+            // fork failed
+            perror("smash error: fork failed");
+            return;
+        }
+        else if (p1 == 0){
+            //  son 1 code
+            setpgrp();
+            if(op == PIPE) {
+                if(dup2(fd[PIPE_WRITE],STDOUT_FD) == -1) {
+                    perror("smash error: dup2 failed");
+                    return;
+                }
+            }
+            else {
+                // op == PIPE_ERR
+                if(dup2(fd[PIPE_WRITE],STDERR_FD) == -1) {
+                    perror("smash error: dup2 failed");
+                    return;
+                }
+            }
+            DO_CLOSE(close(fd[PIPE_READ]));
+            DO_CLOSE(close(fd[PIPE_WRITE]));
+            smash.executeCommand(cmd1_s.c_str());
+            exit(EXIT_FAILURE);
+        }
+        else {
+            //father code
+            pid_t p2 = fork();
+            if (p2 == -1) {
+                // fork failed
+                perror("smash error: fork failed");
+                return;
+            }
+            else if (p2 == 0) {
+                //  son 2 code
+                setpgrp();
+                if( dup2(fd[PIPE_READ],STDIN_FD) == -1) {
+                    perror("smash error: dup2 failed");
+                    return;
+                }
+                DO_CLOSE(close(fd[PIPE_READ]));
+                DO_CLOSE(close(fd[PIPE_WRITE]));
+                smash.executeCommand(cmd2_s.c_str());
+                exit(EXIT_FAILURE);
+            }
+            else {
+                DO_CLOSE(close(fd[PIPE_READ]));
+                DO_CLOSE(close(fd[PIPE_WRITE]));
+                waitpid(p1,nullptr, WUNTRACED);
+                waitpid(p2,nullptr, WUNTRACED);
+            }
+        }}
+    while(0);
+    /*
     SmallShell& smash = SmallShell::getInstance();
 
     int fd [2];
@@ -944,28 +1017,41 @@ void PipeCommand::execute() {
     if (p1 == -1) {
         // fork failed
         perror("smash error: fork failed");
-        return;
+        if (close(fd[0]) == -1)
+        {perror("smash error: close failed");}
+        if (close(fd[1]) == -1)
+        {perror("smash error: close failed");}
+        exit(EXIT_FAILURE);
     }
+
     else if (p1 == 0){
-        //  son 1 code
         setpgrp();
         if(op == PIPE) {
-            if(dup2(fd[PIPE_WRITE],STDOUT_FD) == -1) {
+            if(dup2(fd[PIPE_WRITE], STDOUT_FD) == -1) {
                 perror("smash error: dup2 failed");
-                return;
+                if (close(fd[0]) == -1)
+                {perror("smash error: close failed");}
+                if (close(fd[1]) == -1)
+                {perror("smash error: close failed");}
+                exit(EXIT_FAILURE);
             }
         }
-        else {
-            // op == PIPE_ERR
+        else { // op == PIPE_ERR
             if(dup2(fd[PIPE_WRITE],STDERR_FD) == -1) {
                 perror("smash error: dup2 failed");
-                return;
+                if (close(fd[0]) == -1)
+                {perror("smash error: close failed");}
+                if (close(fd[1]) == -1)
+                {perror("smash error: close failed");}
+                exit(EXIT_FAILURE);
             }
         }
         DO_CLOSE(close(fd[PIPE_READ]));
         DO_CLOSE(close(fd[PIPE_WRITE]));
         smash.executeCommand(cmd1_s.c_str());
+
         //smash.external_quit_flag = true;
+        exit(EXIT_SUCCESS);
     }
     else {
         //father code
@@ -973,6 +1059,10 @@ void PipeCommand::execute() {
         if (p2 == -1) {
             // fork failed
             perror("smash error: fork failed");
+            if (close(fd[0]) == -1)
+                perror("smash error: close failed");
+            if (close(fd[1]) == -1)
+                perror("smash error: close failed");
             return;
         }
         else if (p2 == 0) {
@@ -980,20 +1070,27 @@ void PipeCommand::execute() {
             setpgrp();
             if( dup2(fd[PIPE_READ],STDIN_FD) == -1) {
                 perror("smash error: dup2 failed");
-                return;
+                if (close(fd[0]) == -1)
+                    perror("smash error: close failed");
+                if (close(fd[1]) == -1)
+                    perror("smash error: close failed");
+                exit(EXIT_FAILURE);
             }
             DO_CLOSE(close(fd[PIPE_READ]));
             DO_CLOSE(close(fd[PIPE_WRITE]));
             smash.executeCommand(cmd2_s.c_str());
-            //smash.external_quit_flag = true;
+            exit(EXIT_SUCCESS);
         }
         else {
             DO_CLOSE(close(fd[PIPE_READ]));
             DO_CLOSE(close(fd[PIPE_WRITE]));
-            waitpid(p1,nullptr, WUNTRACED);
-            waitpid(p2,nullptr, WUNTRACED);
+            if (waitpid(p1, nullptr, WUNTRACED) == -1)
+                perror("smash error: waitpid failed");
+            if (waitpid(p2, nullptr, WUNTRACED) == -1)
+                perror("smash error: waitpid failed");
         }
     }
+     */
 }
 
 void HeadCommand::execute() {
@@ -1035,8 +1132,8 @@ void HeadCommand::execute() {
 
     for(int printed_lines = 0; printed_lines<line_num; printed_lines++)
     {
-        while((read_len = read(fd,buffer,1)) != 0 && buffer[0]!='\n') {
-/*
+        while((read_len = read(fd,buffer,1)) != 0) {
+
             if(buffer[0]=='\n')
             {
                 cout << endl;
@@ -1047,18 +1144,14 @@ void HeadCommand::execute() {
             {
                 cout << buffer[0];
             }
-*/
+
             cout << buffer[0];
         }
         if(read_len==0)
         {
-            cout << endl;
             break;
         }
-        if(buffer[0]=='\n')
-        {
-            cout << endl;
-        }
+
     }
 
     if (close(fd) == -1) {
