@@ -15,6 +15,8 @@ using namespace std;
 #define KILL_CMD_ARG_NUM 3
 #define FG_CMD_MAX_ARG_NUM 2
 #define FG_CMD_MIN_ARG_NUM 1
+#define BG_CMD_MAX_ARG_NUM 2
+#define BG_CMD_MIN_ARG_NUM 1
 #define NO_JOB_IN_LIST -1
 #define FORK_FAILED -1
 #define FORK_CHILD 0
@@ -107,12 +109,7 @@ bool isNumber(const std::string& s)
     return (*p == 0);
 }
 
-//--------------------------------------end of non member functions-----------------------------------------------------
-// TODO: Add your implementation for classes in Commands.h
 
-
-
-//--------------------------------------smash member functions---------------------------------------------------
 
 SpecialCommand _identifyAndSeperateSpecialSigns(const char* cmd_line, std::string& result) {
     std::string cmd_line_s(cmd_line);
@@ -149,6 +146,11 @@ SpecialCommand _identifyAndSeperateSpecialSigns(const char* cmd_line, std::strin
     result = cmd_line_s;
     return NORMAL;
 }
+//--------------------------------------end of non member functions-----------------------------------------------------
+// TODO: Add your implementation for classes in Commands.h
+
+
+
 
 
 //--------------------------------------small shell member functions----------------------------------------------------
@@ -231,7 +233,7 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
         //#8
     else if (firstWord.compare("bg") == 0)
     {
-        //return std::shared_ptr<Command>(new BackgroundCommand(cmd_line,&jobs));
+        return std::shared_ptr<Command>(new BackgroundCommand(cmd_line,&jobs));
     }
         //#9
     else if (firstWord.compare("quit") == 0)
@@ -276,7 +278,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
                 waitpid(jobs.getFgJob()->getJobPid(),nullptr, WUNTRACED);
             }
             else {
-                jobs.addJob(cmd);
+                jobs.addJob(cmd, false);
             }
         }
     }
@@ -309,18 +311,12 @@ void SmallShell::executeCommand(const char *cmd_line) {
     {
         cmd->execute();
     }
-    /*else if(typeid(*cmd)==typeid(BackgroundCommand))
-    {
+    else if(typeid(*cmd)==typeid(BackgroundCommand)) {
         cmd->execute();
-    }*/
+    }
     else if(typeid(*cmd)==typeid(QuitCommand))
     {
         cmd->execute();
-    }
-
-    else
-    {
-        //fork();
     }
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
@@ -588,6 +584,19 @@ void JobsList::moveBGToFG(int job_id)
         waitpid(fg_job->getJobPid(), nullptr, WUNTRACED);
     }
 }
+
+
+std::shared_ptr<JobsList::JobEntry> JobsList::getLastStoppedJob()
+{
+    for(int i=jobs.size()-1;i>=0;i--)
+    {
+        if(jobs[i]->isStopped())
+        {
+            return jobs[i];
+        }
+    }
+    return nullptr;
+}
 //--------------------------------------end of JobsList Command member functions----------------------------------------
 
 
@@ -658,6 +667,10 @@ void KillCommand::execute()
     cout << "signal number " << signal << " was sent to pid " << jobs->getJobById(job_id)->getJobPid() << endl;
 }
 //--------------------------------------end of Kill Command member functions--------------------------------------------
+
+
+
+//--------------------------------------Foreground Command member functions---------------------------------------------
 ArgumentsStatus ForegroundCommand::checkArgs(){
     if(args_len>FG_CMD_MAX_ARG_NUM)
     {
@@ -703,17 +716,66 @@ void ForegroundCommand::execute()
     }
     jobs->moveBGToFG(job_id);
 }
-
-//--------------------------------------Foreground Command member functions---------------------------------------------
-
-
-
-
-
 //--------------------------------------end of Foreground Command member functions--------------------------------------
 
 
+//--------------------------------------Background Command member functions---------------------------------------------
+ArgumentsStatus BackgroundCommand::checkArgs(){
+    if(args_len>BG_CMD_MAX_ARG_NUM)
+    {
+        return ARGUMENT_INVALID;
+    }
 
+    else if(BG_CMD_MAX_ARG_NUM==args_len)
+    {
+        if(not isNumber(args[1]))
+        {
+            return ARGUMENT_INVALID;
+        }
+        job_id = stoi(args[1]);
+    }
+    else if(BG_CMD_MIN_ARG_NUM==args_len)
+    {
+        if(! (jobs->getLastStoppedJob()== nullptr))
+        {
+            job_id=jobs->getLastStoppedJob()->getJobId();
+        }
+        job_id=NO_JOB_IN_LIST;
+    }
+    return ARGUMENT_VALID;
+}
+
+
+void BackgroundCommand::execute()
+{
+    if(ARGUMENT_INVALID==checkArgs()) {
+        cerr << "smash error: bg: invalid arguments" << endl;
+        return;
+    }
+    if(NO_JOB_IN_LIST==job_id)
+    {
+        cerr << "smash error: bg: there is no stopped jobs to resume" << endl;
+        return;
+    }
+    if(not jobs->isJobInList(job_id))
+    {
+        cerr << "smash error: bg: job-id " << job_id << " does not exist" << endl;
+        return;
+    }
+    shared_ptr<JobsList::JobEntry> job=jobs->getJobById(job_id);
+    if(not job->isStopped())
+    {
+        cerr << "smash error: bg: job-id " << job_id << " is already running in the background" << endl;
+        return;
+    }
+    cout << (job->getCommand()->getCommand()) << " : ";
+    std::cout << job->getJobPid() << endl;
+    job->setIsStopped(false);
+    if(kill(job->getJobPid() , SIGCONT) == -1) {
+        perror("smash error: kill failed");
+    }
+}
+//--------------------------------------end of Background Command member functions--------------------------------------
 
 
 

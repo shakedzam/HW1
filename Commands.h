@@ -31,8 +31,8 @@ private:
 
 
 protected:
-    const char* my_cmd_line;
-    const char* origin_cmd_line;
+    const string my_cmd_line;
+    const string origin_cmd_line;
     char* args[COMMAND_MAX_ARGS];
     int args_len;
     bool is_bg;
@@ -138,7 +138,7 @@ public:
     bool isJobInList(int job_id);
     //void removeJobById(int jobId);
     std::shared_ptr<JobEntry> getLastJob();
-    //std::shared_ptr<JobEntry> getLastStoppedJob(int *jobId);
+    std::shared_ptr<JobEntry> getLastStoppedJob();
     void moveBGToFG(int job_id);
     // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -182,18 +182,19 @@ public:
 };
 
 
-/*
+
 // #8
 class BackgroundCommand : public BuiltInCommand {
     JobsList* jobs;
     int job_id;
     // TODO: Add your data members
 public:
-    BackgroundCommand(const char* cmd_line, JobsList* jobs):BuiltInCommand(cmd_line) , jobs(jobs){}
+    BackgroundCommand(const char* cmd_line, JobsList* jobs):BuiltInCommand(cmd_line) , jobs(jobs){jobs->removeFinishedJobs();}
     virtual ~BackgroundCommand() {}
     void execute() override;
+    ArgumentsStatus checkArgs();
 };
-*/
+
 
 // #9
 class QuitCommand : public BuiltInCommand {
