@@ -50,6 +50,38 @@ void ctrlCHandler(int sig_num) {
 }
 
 void alarmHandler(int sig_num) {
-  // TODO: Add your implementation
+    SmallShell& smash = SmallShell::getInstance();
+    smash.smashJobs.removeFinishedJobs();
+    cout << "smash: got an alarm" << endl;
+    time_t currentTime;
+    time(&currentTime);
+    JobsList::JobEntry* timedOutCmd = nullptr;
+    if (smash.timedCommands.jobList.empty())
+        timedOutCmd = nullptr;
+    for (auto& cmd : smash.timedCommands.jobList)
+        if (cmd.duration - difftime(currentTime,cmd.execTime) == 0)
+            timedOutCmd = &cmd;
+    if (timedOutCmd != nullptr) {
+        cout << "smash: " << timedOutCmd->ext_cmd->cmd_line << " timed out!" << endl;
+        if (kill(timedOutCmd->jobPID,SIGKILL) == -1) {
+            perror("smash error: kill failed");
+            return;
+        }
+        smash.timedCommands.removeJobByPid(timedOutCmd->jobPID);
+    }
+    int nextAlarm;
+    if (smash.timedCommands.jobList.empty())
+        nextAlarm = -1;
+    else {
+        time_t curr_time;
+        time(&curr_time);
+        nextAlarm = smash.timedCommands.jobList.begin()->duration - difftime(curr_time, smash.timedCommands.jobList.begin()->execTime);
+        for (auto& cmd : smash.timedCommands.jobList) {
+            int curr = cmd.duration - difftime(curr_time, cmd.execTime);
+            if (curr > 0 && curr < nextAlarm)
+                nextAlarm = cmd.duration - difftime(curr_time, cmd.execTime);
+        }
+    }
+    alarm(nextAlarm);
 }
 
