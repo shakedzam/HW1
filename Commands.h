@@ -288,6 +288,7 @@ class SmallShell {
     pid_t smash_pid;
     SmallShell();
  public:
+    bool external_quit_flag;
     JobsList jobs;
     std::shared_ptr<Command> CreateCommand(const char* cmd_line);
     SmallShell(SmallShell const&)      = default; // disable copy ctor

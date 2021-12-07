@@ -156,7 +156,7 @@ SpecialCommand _identifyAndSeperateSpecialSigns(const char* cmd_line, std::strin
 
 
 //--------------------------------------small shell member functions----------------------------------------------------
-SmallShell::SmallShell():smash_name("smash") , smash_pid(getpid()){};
+SmallShell::SmallShell():smash_name("smash") ,external_quit_flag(false), smash_pid(getpid()){};
 
 
 
@@ -240,14 +240,14 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
         //#9
     else if (firstWord.compare("quit") == 0)
     {
+        external_quit_flag = true;
         return std::shared_ptr<Command>(new QuitCommand(cmd_line,&jobs));
     }
+    //end of if command is an internal command
     else if (firstWord.compare("head") == 0)
     {
         return std::shared_ptr<Command>(new HeadCommand(cmd_line));
     }
-    //end of if command is an internal command
-
     //else its external command
     else {
         return std::shared_ptr<Command>(new ExternalCommand(cmd_line));
@@ -939,72 +939,6 @@ PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {
 }
 
 void PipeCommand::execute() {
-
-    do{
-        SmallShell& smash = SmallShell::getInstance();
-
-        int fd [2];
-        if (pipe(fd) == -1){
-            perror("smash error: pipe failed");
-            return;
-        }
-
-        pid_t p1 = fork();
-        if (p1 == -1) {
-            // fork failed
-            perror("smash error: fork failed");
-            return;
-        }
-        else if (p1 == 0){
-            //  son 1 code
-            setpgrp();
-            if(op == PIPE) {
-                if(dup2(fd[PIPE_WRITE],STDOUT_FD) == -1) {
-                    perror("smash error: dup2 failed");
-                    return;
-                }
-            }
-            else {
-                // op == PIPE_ERR
-                if(dup2(fd[PIPE_WRITE],STDERR_FD) == -1) {
-                    perror("smash error: dup2 failed");
-                    return;
-                }
-            }
-            DO_CLOSE(close(fd[PIPE_READ]));
-            DO_CLOSE(close(fd[PIPE_WRITE]));
-            smash.executeCommand(cmd1_s.c_str());
-            exit(EXIT_FAILURE);
-        }
-        else {
-            //father code
-            pid_t p2 = fork();
-            if (p2 == -1) {
-                // fork failed
-                perror("smash error: fork failed");
-                return;
-            }
-            else if (p2 == 0) {
-                //  son 2 code
-                setpgrp();
-                if( dup2(fd[PIPE_READ],STDIN_FD) == -1) {
-                    perror("smash error: dup2 failed");
-                    return;
-                }
-                DO_CLOSE(close(fd[PIPE_READ]));
-                DO_CLOSE(close(fd[PIPE_WRITE]));
-                smash.executeCommand(cmd2_s.c_str());
-                exit(EXIT_FAILURE);
-            }
-            else {
-                DO_CLOSE(close(fd[PIPE_READ]));
-                DO_CLOSE(close(fd[PIPE_WRITE]));
-                waitpid(p1,nullptr, WUNTRACED);
-                waitpid(p2,nullptr, WUNTRACED);
-            }
-        }}
-    while(0);
-    /*
     SmallShell& smash = SmallShell::getInstance();
 
     int fd [2];
@@ -1017,41 +951,28 @@ void PipeCommand::execute() {
     if (p1 == -1) {
         // fork failed
         perror("smash error: fork failed");
-        if (close(fd[0]) == -1)
-        {perror("smash error: close failed");}
-        if (close(fd[1]) == -1)
-        {perror("smash error: close failed");}
-        exit(EXIT_FAILURE);
+        return;
     }
-
     else if (p1 == 0){
+        //  son 1 code
         setpgrp();
         if(op == PIPE) {
-            if(dup2(fd[PIPE_WRITE], STDOUT_FD) == -1) {
+            if(dup2(fd[PIPE_WRITE],STDOUT_FD) == -1) {
                 perror("smash error: dup2 failed");
-                if (close(fd[0]) == -1)
-                {perror("smash error: close failed");}
-                if (close(fd[1]) == -1)
-                {perror("smash error: close failed");}
-                exit(EXIT_FAILURE);
+                return;
             }
         }
-        else { // op == PIPE_ERR
+        else {
+            // op == PIPE_ERR
             if(dup2(fd[PIPE_WRITE],STDERR_FD) == -1) {
                 perror("smash error: dup2 failed");
-                if (close(fd[0]) == -1)
-                {perror("smash error: close failed");}
-                if (close(fd[1]) == -1)
-                {perror("smash error: close failed");}
-                exit(EXIT_FAILURE);
+                return;
             }
         }
         DO_CLOSE(close(fd[PIPE_READ]));
         DO_CLOSE(close(fd[PIPE_WRITE]));
         smash.executeCommand(cmd1_s.c_str());
-
-        //smash.external_quit_flag = true;
-        exit(EXIT_SUCCESS);
+        smash.external_quit_flag = true;
     }
     else {
         //father code
@@ -1059,10 +980,6 @@ void PipeCommand::execute() {
         if (p2 == -1) {
             // fork failed
             perror("smash error: fork failed");
-            if (close(fd[0]) == -1)
-                perror("smash error: close failed");
-            if (close(fd[1]) == -1)
-                perror("smash error: close failed");
             return;
         }
         else if (p2 == 0) {
@@ -1070,27 +987,20 @@ void PipeCommand::execute() {
             setpgrp();
             if( dup2(fd[PIPE_READ],STDIN_FD) == -1) {
                 perror("smash error: dup2 failed");
-                if (close(fd[0]) == -1)
-                    perror("smash error: close failed");
-                if (close(fd[1]) == -1)
-                    perror("smash error: close failed");
-                exit(EXIT_FAILURE);
+                return;
             }
             DO_CLOSE(close(fd[PIPE_READ]));
             DO_CLOSE(close(fd[PIPE_WRITE]));
             smash.executeCommand(cmd2_s.c_str());
-            exit(EXIT_SUCCESS);
+            smash.external_quit_flag = true;
         }
         else {
             DO_CLOSE(close(fd[PIPE_READ]));
             DO_CLOSE(close(fd[PIPE_WRITE]));
-            if (waitpid(p1, nullptr, WUNTRACED) == -1)
-                perror("smash error: waitpid failed");
-            if (waitpid(p2, nullptr, WUNTRACED) == -1)
-                perror("smash error: waitpid failed");
+            waitpid(p1,nullptr, WUNTRACED);
+            waitpid(p2,nullptr, WUNTRACED);
         }
     }
-     */
 }
 
 void HeadCommand::execute() {
