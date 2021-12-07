@@ -622,6 +622,17 @@ void JobsList::StopFG() {
     }
 
 }
+
+void JobsList::setFgJob(std::shared_ptr<Command> cmd) {
+    if(cmd)
+    {
+        fg_job=std::make_shared<JobEntry>(cmd, cmd->getPID());
+    }
+    else
+    {
+        fg_job= nullptr;
+    }
+}
 //--------------------------------------end of JobsList Command member functions----------------------------------------
 
 

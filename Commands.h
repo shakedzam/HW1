@@ -111,7 +111,7 @@ public:
         time_t executed_time;
         bool is_stopped;
     public:
-        JobEntry(std::shared_ptr<Command> &cmd, bool is_stopped = false, int job_id= 1);
+        JobEntry(std::shared_ptr<Command> &cmd, bool is_stopped = false, int job_id= 0);
         ~JobEntry() = default;
         std::shared_ptr<Command> getCommand() { return cmd;}
         time_t getTime() const { return executed_time; }
@@ -134,7 +134,7 @@ public:
     void killAllJobs();
     void removeFinishedJobs();
     std::shared_ptr<JobEntry> getFgJob(){return fg_job;}
-    void setFgJob(std::shared_ptr<Command> cmd){fg_job=std::make_shared<JobEntry>(cmd, cmd->getPID());}
+    void setFgJob(std::shared_ptr<Command> cmd);
     std::shared_ptr<JobEntry> getJobById(int jobId);
     bool isJobInList(int job_id);
     //void removeJobById(int jobId);

@@ -45,6 +45,7 @@ void ctrlCHandler(int sig_num) {
         }
         cout << "smash: process " << smash.jobs.getFgJob()->getJobPid() << " was killed" << endl;
     }
+
     smash.jobs.setFgJob(nullptr);
 }
 
