@@ -123,6 +123,7 @@ private:
     int getNextFreeID();
     // TODO: Add your data members
 public:
+
     JobsList()=default;
     ~JobsList()=default;
     void addJob(std::shared_ptr<Command> cmd, bool isStopped = false);
@@ -136,6 +137,8 @@ public:
     //std::shared_ptr<JobEntry> getLastStoppedJob(int *jobId);
     void moveBGToFG(int job_id);
     // TODO: Add extra methods or modify exisitng ones as needed
+    const std::shared_ptr<JobEntry> &getForeGroundJob() const;
+    void StopFG();
 };
 
 
@@ -295,6 +298,8 @@ class SmallShell {
     const string &getSmashName() const {return smash_name;}
     void setSmashName(string new_name);
     pid_t getSmashPID(){return smash_pid;}
+
+    pid_t getRunningCmd() const;
 };
 
 #endif //SMASH_COMMAND_H_

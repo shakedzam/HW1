@@ -16,6 +16,7 @@ using namespace std;
 #define FG_CMD_MAX_ARG_NUM 2
 #define FG_CMD_MIN_ARG_NUM 1
 #define NO_JOB_IN_LIST -1
+#define NO_RUNNING_CMD 0
 #if 0
 #define FUNC_ENTRY()  \
   cout << __PRETTY_FUNCTION__ << " --> " << endl;
@@ -854,5 +855,32 @@ void PipeCommand::execute() {
             waitpid(p1,nullptr, WUNTRACED);
             waitpid(p2,nullptr, WUNTRACED);
         }
+    }
+}
+
+//--------------------------------------SmallShell member functions--------------------------------------------
+
+pid_t SmallShell::getRunningCmd() const {5
+    if(jobs.getForeGroundJob()) {
+        return jobs.getForeGroundJob()->getJobPid();
+    }
+    return NO_RUNNING_CMD;
+}
+
+
+const std::shared_ptr<JobsList::JobEntry> &JobsList::getForeGroundJob() const {
+    return fg_job;
+}
+
+void JobsList::StopFG() {
+    if(fg_job) {
+        fg_job->setIsStopped(true);
+        fg_job->resetTime();
+        jobs[getNextFreeID()] = fg_job;
+        if(fg_job->getJobId() == 0) {
+            addJob(fg_job->getCommand(), true);
+        }
+
+        fg_job = nullptr;
     }
 }
