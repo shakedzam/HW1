@@ -240,6 +240,10 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
     {
         return std::shared_ptr<Command>(new QuitCommand(cmd_line,&jobs));
     }
+    else if (firstWord.compare("head") == 0)
+    {
+        return std::shared_ptr<Command>(new HeadCommand(cmd_line));
+    }
     //end of if command is an internal command
 
     //else its external command
@@ -315,6 +319,10 @@ void SmallShell::executeCommand(const char *cmd_line) {
         cmd->execute();
     }
     else if(typeid(*cmd)==typeid(QuitCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(HeadCommand))
     {
         cmd->execute();
     }
@@ -608,14 +616,15 @@ void JobsList::StopFG() {
         }
         else
         {
-            for(int index =0; index<jobs.size();index++)
+            int index =0;
+            for(; index<jobs.size();index++)
             {
                 if(fg_job->getJobId()<jobs[index]->getJobId())
                 {
-                    jobs.insert(jobs.begin()+index,fg_job);
                     break;
                 }
             }
+            jobs.insert(jobs.begin()+index,fg_job);
         }
 
         fg_job = nullptr;
@@ -1026,22 +1035,29 @@ void HeadCommand::execute() {
 
     for(int printed_lines = 0; printed_lines<line_num; printed_lines++)
     {
-        while((read_len = read(fd,buffer,1)) != 0) {
-
+        while((read_len = read(fd,buffer,1)) != 0 && buffer[0]!='\n') {
+/*
             if(buffer[0]=='\n')
             {
                 cout << endl;
                 break;
             }
+
             else
             {
                 cout << buffer[0];
             }
-
+*/
+            cout << buffer[0];
         }
         if(read_len==0)
         {
+            cout << endl;
             break;
+        }
+        if(buffer[0]=='\n')
+        {
+            cout << endl;
         }
     }
 
