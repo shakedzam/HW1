@@ -42,12 +42,9 @@ protected:
   virtual ~Command(){}
   virtual void execute() = 0;
   pid_t getPID(){return command_pid;}
-  void setPID(pid_t new_pid){command_pid=new_pid;}
   string getCommand(){
       string ret(origin_cmd_line);
       return ret;}
-  bool isBgCommand(){return is_bg;}
-  void setBgCommand(bool is_bg_command){is_bg=is_bg_command;}
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
@@ -132,8 +129,6 @@ public:
     void printJobsList();
     void killAllJobs();
     void removeFinishedJobs();
-    std::shared_ptr<JobEntry> getFgJob(){return fg_job;}
-    void setFgJob(std::shared_ptr<Command> cmd){fg_job=std::make_shared<JobEntry>(cmd, cmd->getPID());}
     std::shared_ptr<JobEntry> getJobById(int jobId);
     bool isJobInList(int job_id);
     //void removeJobById(int jobId);
@@ -212,7 +207,6 @@ public:
 
 //-----------------------------------------------------------------External Commands-----------------------------
 class ExternalCommand : public Command {
-    std::string bash_cmd;
  public:
   ExternalCommand(const char* cmd_line);
   virtual ~ExternalCommand() {}
