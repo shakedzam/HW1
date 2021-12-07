@@ -18,12 +18,21 @@ enum ArgumentsStatus
     ARGUMENT_INVALID
 };
 
+enum SpecialCommand {
+    NORMAL = 0,
+    PIPE,
+    PIPE_TO_ERR,
+    REDIRECTION,
+    REDIRECTION_APPEND
+};
+
 class Command {
 private:
 
 
 protected:
-    const char* my_cmd_line;
+    const string my_cmd_line;
+    const string origin_cmd_line;
     char* args[COMMAND_MAX_ARGS];
     int args_len;
     bool is_bg;
@@ -33,7 +42,12 @@ protected:
   virtual ~Command(){}
   virtual void execute() = 0;
   pid_t getPID(){return command_pid;}
-  const char* getCommand(){return my_cmd_line;}
+  void setPID(pid_t new_pid){command_pid=new_pid;}
+  string getCommand(){
+      string ret(origin_cmd_line);
+      return ret;}
+  bool isBgCommand(){return is_bg;}
+  void setBgCommand(bool is_bg_command){is_bg=is_bg_command;}
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
@@ -118,11 +132,13 @@ public:
     void printJobsList();
     void killAllJobs();
     void removeFinishedJobs();
+    std::shared_ptr<JobEntry> getFgJob(){return fg_job;}
+    void setFgJob(std::shared_ptr<Command> cmd){fg_job=std::make_shared<JobEntry>(cmd, cmd->getPID());}
     std::shared_ptr<JobEntry> getJobById(int jobId);
     bool isJobInList(int job_id);
     //void removeJobById(int jobId);
     std::shared_ptr<JobEntry> getLastJob();
-    //std::shared_ptr<JobEntry> getLastStoppedJob(int *jobId);
+    std::shared_ptr<JobEntry> getLastStoppedJob();
     void moveBGToFG(int job_id);
     // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -166,18 +182,19 @@ public:
 };
 
 
-/*
+
 // #8
 class BackgroundCommand : public BuiltInCommand {
     JobsList* jobs;
     int job_id;
     // TODO: Add your data members
 public:
-    BackgroundCommand(const char* cmd_line, JobsList* jobs):BuiltInCommand(cmd_line) , jobs(jobs){}
+    BackgroundCommand(const char* cmd_line, JobsList* jobs):BuiltInCommand(cmd_line) , jobs(jobs){jobs->removeFinishedJobs();}
     virtual ~BackgroundCommand() {}
     void execute() override;
+    ArgumentsStatus checkArgs();
 };
-*/
+
 
 // #9
 class QuitCommand : public BuiltInCommand {
@@ -196,6 +213,7 @@ public:
 
 //-----------------------------------------------------------------External Commands-----------------------------
 class ExternalCommand : public Command {
+    std::string bash_cmd;
  public:
   ExternalCommand(const char* cmd_line);
   virtual ~ExternalCommand() {}
@@ -208,6 +226,12 @@ class ExternalCommand : public Command {
 class PipeCommand : public Command {
   // TODO: Add your data members
  public:
+    SpecialCommand op;
+    std::string cmd1_s;
+    std::string cmd2_s;
+    int temp_stdout_fd;
+    int temp_stderr_fd;
+    int temp_stdin_fd;
   PipeCommand(const char* cmd_line);
   virtual ~PipeCommand() {}
   void execute() override;
@@ -216,6 +240,9 @@ class PipeCommand : public Command {
 class RedirectionCommand : public Command {
  // TODO: Add your data members
  public:
+    bool append;
+    std::string leftSide;
+    std::string rightSide;
   explicit RedirectionCommand(const char* cmd_line);
   virtual ~RedirectionCommand() {}
   void execute() override;
