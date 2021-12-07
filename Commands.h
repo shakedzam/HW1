@@ -274,7 +274,7 @@ class RedirectionCommand : public Command {
 
 class HeadCommand : public BuiltInCommand {
  public:
-  HeadCommand(const char* cmd_line);
+  HeadCommand(const char* cmd_line):BuiltInCommand(cmd_line){};
   virtual ~HeadCommand() {}
   void execute() override;
 };

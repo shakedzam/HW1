@@ -986,3 +986,70 @@ void PipeCommand::execute() {
         }
     }
 }
+
+void HeadCommand::execute() {
+    SmallShell& smash = SmallShell::getInstance();
+    string filename;
+    int line_num = 10;
+    if (this->args_len == 1) {
+        cerr << "smash error: head: not enough arguments" << endl;
+        return;
+    }
+    if (this->args_len > 3)
+    {
+        return;
+    }
+    if (this->args_len == 3) {
+
+        string num = string(this->args[1]).substr( 1);
+        if(isNumber(num))
+        {
+            line_num = stoi(num);
+        }
+       else {
+            cerr << "smash error: head: invalid arguments" << endl;
+            return;
+        }
+        filename = this->args[2];
+    } else {
+        filename = this->args[1];
+    }
+
+    int fd = open(filename.c_str(),O_RDONLY);
+    if (fd == -1) {
+        perror("smash error: open failed");
+        return;
+    }
+
+    char buffer[2];
+    ssize_t read_len;
+
+    for(int printed_lines = 0; printed_lines<line_num; printed_lines++)
+    {
+        while((read_len = read(fd,buffer,1)) != 0) {
+
+            if(buffer[0]=='\n')
+            {
+                cout << endl;
+                break;
+            }
+            else
+            {
+                cout << buffer[0];
+            }
+
+        }
+        if(read_len==0)
+        {
+            break;
+        }
+    }
+
+    if (close(fd) == -1) {
+        perror("smash error: close failed");
+        return;
+    }
+
+
+
+}
