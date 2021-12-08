@@ -849,6 +849,7 @@ void BackgroundCommand::execute()
 //--------------------------------------Quit Command member functions---------------------------------------------------
 void QuitCommand::execute() {
     if(args_len >= 2 and strcmp(args[1],"kill") == 0) {
+        jobs->removeFinishedJobs();
         jobs->killAllJobs();
     }
     SmallShell& smash = SmallShell::getInstance();
