@@ -260,15 +260,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // for example:
 
     std::shared_ptr<Command> cmd = SmallShell::CreateCommand(cmd_line);
-	if(typeid(*cmd)==typeid(RedirectionCommand))
-    {
-        cmd->execute();
-    }
 
-    if(typeid(*cmd)==typeid(PipeCommand))
-    {
-        cmd->execute();
-    }
 	
     if(typeid(*cmd)==typeid(ExternalCommand))
     {
@@ -295,46 +287,11 @@ void SmallShell::executeCommand(const char *cmd_line) {
             }
         }
     }
-    else if(typeid(*cmd)==typeid(ChPromptCommand))
-        //if(typeid(*cmd)==typeid(BuiltInCommand))
+    else
     {
         cmd->execute();
     }
-    else if(typeid(*cmd)==typeid(ShowPidCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(GetCurrDirCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(ChangeDirCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(JobsCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(KillCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(ForegroundCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(BackgroundCommand)) {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(QuitCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(HeadCommand))
-    {
-        cmd->execute();
-    }
+
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 //--------------------------------------end of small shell member functions---------------------------------------------
