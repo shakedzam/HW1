@@ -77,8 +77,9 @@ int _parseCommandLine(const char* cmd_line, char** args) {
 }
 
 bool _isBackgroundComamnd(const char* cmd_line) {
-  const string str(cmd_line);
-  return str[str.find_last_not_of(WHITESPACE)] == '&';
+    const string str(cmd_line);
+    size_t idx = str.find_last_not_of(WHITESPACE);
+    return idx == string::npos ? false : str[idx] == '&';
 }
 
 void _removeBackgroundSign(string& cmd_line) {
@@ -258,17 +259,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     // for example:
     std::shared_ptr<Command> cmd = SmallShell::CreateCommand(cmd_line);
-	if(typeid(*cmd)==typeid(RedirectionCommand))
-    {
-        cmd->execute();
-    }
-
-    if(typeid(*cmd)==typeid(PipeCommand))
-    {
-        cmd->execute();
-    }
-	
-    if(typeid(*cmd)==typeid(ExternalCommand))
+	if(typeid(*cmd)==typeid(ExternalCommand))
     {
         pid_t external_process_id=fork();
         if(FORK_FAILED==external_process_id)
@@ -293,43 +284,8 @@ void SmallShell::executeCommand(const char *cmd_line) {
             }
         }
     }
-    else if(typeid(*cmd)==typeid(ChPromptCommand))
-        //if(typeid(*cmd)==typeid(BuiltInCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(ShowPidCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(GetCurrDirCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(ChangeDirCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(JobsCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(KillCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(ForegroundCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(BackgroundCommand)) {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(QuitCommand))
-    {
-        cmd->execute();
-    }
-    else if(typeid(*cmd)==typeid(HeadCommand))
+
+    else
     {
         cmd->execute();
     }
@@ -365,7 +321,10 @@ BuiltInCommand::BuiltInCommand(const char* cmd_line):Command(cmd_line){
 //--------------------------------------External Command member functions-----------------------------------------------
 
 ExternalCommand::ExternalCommand(const char* cmd_line): Command(cmd_line), bash_cmd(my_cmd_line){
-    _removeBackgroundSign(bash_cmd);
+    if(_isBackgroundComamnd(bash_cmd.c_str()))
+    {
+        _removeBackgroundSign(bash_cmd);
+    }
 }
 
 
