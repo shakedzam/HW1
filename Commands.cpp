@@ -260,7 +260,17 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // for example:
 
     std::shared_ptr<Command> cmd = SmallShell::CreateCommand(cmd_line);
-	if(typeid(*cmd)==typeid(ExternalCommand))
+	if(typeid(*cmd)==typeid(RedirectionCommand))
+    {
+        cmd->execute();
+    }
+
+    if(typeid(*cmd)==typeid(PipeCommand))
+    {
+        cmd->execute();
+    }
+	
+    if(typeid(*cmd)==typeid(ExternalCommand))
     {
         pid_t external_process_id=fork();
         if(FORK_FAILED==external_process_id)
@@ -285,8 +295,43 @@ void SmallShell::executeCommand(const char *cmd_line) {
             }
         }
     }
-
-    else
+    else if(typeid(*cmd)==typeid(ChPromptCommand))
+        //if(typeid(*cmd)==typeid(BuiltInCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(ShowPidCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(GetCurrDirCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(ChangeDirCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(JobsCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(KillCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(ForegroundCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(BackgroundCommand)) {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(QuitCommand))
+    {
+        cmd->execute();
+    }
+    else if(typeid(*cmd)==typeid(HeadCommand))
     {
         cmd->execute();
     }
@@ -803,9 +848,7 @@ void BackgroundCommand::execute()
 
 //--------------------------------------Quit Command member functions---------------------------------------------------
 void QuitCommand::execute() {
-
     if(args_len >= 2 and strcmp(args[1],"kill") == 0) {
-        jobs->removeFinishedJobs();
         jobs->killAllJobs();
     }
     SmallShell& smash = SmallShell::getInstance();

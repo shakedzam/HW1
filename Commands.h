@@ -219,7 +219,7 @@ class ExternalCommand : public Command {
     std::string bash_cmd;
  public:
   ExternalCommand(const char* cmd_line);
-  virtual ~ExternalCommand() override =default;
+  virtual ~ExternalCommand() {} // override =default; ///commit 1:05
   void execute() override;
 };
 
