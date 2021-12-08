@@ -714,11 +714,12 @@ ArgumentsStatus ForegroundCommand::checkArgs(){
 
 void ForegroundCommand::execute()
 {
-    if(ARGUMENT_INVALID==checkArgs()) {
+    ArgumentsStatus status=checkArgs();
+    if(ARGUMENT_INVALID==status) {
         cerr << "smash error: fg: invalid arguments" << endl;
         return;
     }
-    if(NO_JOB_IN_LIST==job_id)
+    if(NO_JOB_IN_LIST==status)
     {
         cerr << "smash error: fg: jobs list is empty" << endl;
         return;
