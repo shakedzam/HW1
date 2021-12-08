@@ -15,7 +15,7 @@ void ctrlZHandler(int sig_num) {
     {
         int returnPid =  waitpid(smash.jobs.getFgJob()->getJobPid(), nullptr, WNOHANG);
         if (returnPid == -1) {
-            perror("smash error: waitpid failed");
+            //perror("smash error: waitpid failed");
             return;
         }
         if(kill(smash.jobs.getFgJob()->getJobPid(),SIGSTOP) == -1) {
@@ -36,7 +36,7 @@ void ctrlCHandler(int sig_num) {
     if(smash.jobs.getFgJob()) {
         int returnPid =  waitpid(smash.jobs.getFgJob()->getJobPid(), nullptr, WNOHANG);
         if (returnPid == -1) {
-            perror("smash error: waitpid failed");
+            //perror("smash error: waitpid failed");
             return;
         }
         if (kill(smash.jobs.getFgJob()->getJobPid(),SIGKILL) == -1) {

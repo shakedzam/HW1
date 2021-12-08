@@ -17,7 +17,6 @@ using namespace std;
 #define FG_CMD_MIN_ARG_NUM 1
 #define BG_CMD_MAX_ARG_NUM 2
 #define BG_CMD_MIN_ARG_NUM 1
-#define NO_JOB_IN_LIST -1
 #define FORK_FAILED -1
 #define FORK_CHILD 0
 
@@ -103,11 +102,12 @@ void _removeBackgroundSign(string& cmd_line) {
 
 bool isNumber(const std::string& s)
 {
+
     if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
 
     char * p;
-    strtol(s.c_str(), &p, 10);
 
+    strtol(s.c_str(), &p, 10);
     return (*p == 0);
 }
 
@@ -198,53 +198,53 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
 
     //if command is an internal command
     //#1
-    if(firstWord.compare("chprompt") == 0)
+    if(firstWord.compare("chprompt") == 0 or firstWord.compare(("chprompt&")) == 0)
     {
         return std::shared_ptr<Command>(new ChPromptCommand(cmd_line));
     }
         //#2
-    else if (firstWord.compare("showpid") == 0)
+    else if (firstWord.compare("showpid") == 0 or firstWord.compare(("showpid&")) == 0)
     {
         return std::shared_ptr<Command>(new ShowPidCommand(cmd_line));
     }
         //#3
-    else if (firstWord.compare("pwd") == 0)
+    else if (firstWord.compare("pwd") == 0 or firstWord.compare(("pwd&")) == 0)
     {
         return std::shared_ptr<Command>(new GetCurrDirCommand(cmd_line));
     }
         //#4
-    else if (firstWord.compare("cd") == 0)
+    else if (firstWord.compare("cd") == 0 or firstWord.compare(("cd&")) == 0)
     {
         return std::shared_ptr<Command>(new ChangeDirCommand(cmd_line,&last_working_directory));
     }
         //5
-    else if (firstWord.compare("jobs") == 0)
+    else if (firstWord.compare("jobs") == 0 or firstWord.compare(("jobs&")) == 0)
     {
         return std::shared_ptr<Command>(new JobsCommand(cmd_line,&jobs));
     }
         //#6
-    else if (firstWord.compare("kill") == 0)
+    else if (firstWord.compare("kill") == 0 or firstWord.compare(("kill&")) == 0)
     {
         return std::shared_ptr<Command>(new KillCommand(cmd_line,&jobs));
     }
         //#7
-    else if (firstWord.compare("fg") == 0)
+    else if (firstWord.compare("fg") == 0 or firstWord.compare(("fg&")) == 0)
     {
         return std::shared_ptr<Command>(new ForegroundCommand(cmd_line,&jobs));
     }
         //#8
-    else if (firstWord.compare("bg") == 0)
+    else if (firstWord.compare("bg") == 0 or firstWord.compare(("bg&")) == 0)
     {
         return std::shared_ptr<Command>(new BackgroundCommand(cmd_line,&jobs));
     }
         //#9
-    else if (firstWord.compare("quit") == 0)
+    else if (firstWord.compare("quit") == 0 or firstWord.compare(("quit&")) == 0)
     {
         external_quit_flag = true;
         return std::shared_ptr<Command>(new QuitCommand(cmd_line,&jobs));
     }
     //end of if command is an internal command
-    else if (firstWord.compare("head") == 0)
+    else if (firstWord.compare("head") == 0 or firstWord.compare(("head&")) == 0)
     {
         return std::shared_ptr<Command>(new HeadCommand(cmd_line));
     }
@@ -519,7 +519,7 @@ void JobsList::printJobsList(){
         std::cout << difftime(time(nullptr),jobs[i]->getTime()) << " secs";
         if (jobs[i]->isStopped())
         {
-            std::cout << "(stopped)";
+            std::cout << " (stopped)";
         }
         std::cout << std::endl;
     }
@@ -531,7 +531,7 @@ void JobsList::killAllJobs(){
     std::cout << "smash: sending SIGKILL signal to " << jobs.size() << " jobs:" << endl;
     while(!jobs.empty())
     {
-        std::cout << jobs[0]->getJobPid() << " : ";
+        std::cout << jobs[0]->getJobPid() << ": ";
         std::cout << jobs[0]->getCommand()->getCommand();
         std::cout << std::endl;
         if (kill(jobs[0]->getJobPid(), SIGKILL) == -1)
@@ -743,7 +743,10 @@ ArgumentsStatus ForegroundCommand::checkArgs(){
         {
             job_id=jobs->getLastJob()->getJobId();
         }
-        job_id=NO_JOB_IN_LIST;
+        else
+        {
+            return NO_JOB_IN_LIST;
+        }
     }
     return ARGUMENT_VALID;
 }
@@ -792,7 +795,10 @@ ArgumentsStatus BackgroundCommand::checkArgs(){
         {
             job_id=jobs->getLastStoppedJob()->getJobId();
         }
-        job_id=NO_JOB_IN_LIST;
+        else
+        {
+            return NO_JOB_IN_LIST;
+        }
     }
     return ARGUMENT_VALID;
 }
@@ -800,11 +806,12 @@ ArgumentsStatus BackgroundCommand::checkArgs(){
 
 void BackgroundCommand::execute()
 {
-    if(ARGUMENT_INVALID==checkArgs()) {
+    ArgumentsStatus status =checkArgs();
+    if(ARGUMENT_INVALID==status) {
         cerr << "smash error: bg: invalid arguments" << endl;
         return;
     }
-    if(NO_JOB_IN_LIST==job_id)
+    if(NO_JOB_IN_LIST==status)
     {
         cerr << "smash error: bg: there is no stopped jobs to resume" << endl;
         return;
@@ -820,6 +827,7 @@ void BackgroundCommand::execute()
         cerr << "smash error: bg: job-id " << job_id << " is already running in the background" << endl;
         return;
     }
+
     cout << (job->getCommand()->getCommand()) << " : ";
     std::cout << job->getJobPid() << endl;
     job->setIsStopped(false);
@@ -1042,7 +1050,7 @@ void HeadCommand::execute() {
                 cout << buffer[0];
             }
 
-            cout << buffer[0];
+
         }
         if(read_len==0)
         {

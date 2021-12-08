@@ -16,7 +16,8 @@ using namespace std;
 enum ArgumentsStatus
 {
     ARGUMENT_VALID,
-    ARGUMENT_INVALID
+    ARGUMENT_INVALID,
+    NO_JOB_IN_LIST
 };
 
 enum SpecialCommand {
