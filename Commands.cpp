@@ -258,6 +258,7 @@ std::shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
 void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     // for example:
+
     std::shared_ptr<Command> cmd = SmallShell::CreateCommand(cmd_line);
 	if(typeid(*cmd)==typeid(ExternalCommand))
     {
